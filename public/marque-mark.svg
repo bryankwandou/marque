@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Marque">
+  <defs>
+    <linearGradient id="mqBrass" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4CE8C"/>
+      <stop offset="0.42" stop-color="#E6A94E"/>
+      <stop offset="1" stop-color="#A96F27"/>
+    </linearGradient>
+    <mask id="mqCut">
+      <rect x="4" y="4" width="56" height="56" rx="17" fill="#fff"/>
+      <path d="M20.5 43.5 V21.5 L32 34.5 L43.5 21.5 V43.5" stroke="#000" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </mask>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="17" fill="url(#mqBrass)" mask="url(#mqCut)"/>
+  <rect x="9.75" y="9.75" width="44.5" height="44.5" rx="12.5" stroke="#100C05" stroke-opacity="0.18" stroke-width="1.25" fill="none"/>
+</svg>

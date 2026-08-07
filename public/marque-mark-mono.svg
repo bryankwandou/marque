@@ -1,0 +1,7 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Marque">
+  <mask id="mqCutMono">
+    <rect x="4" y="4" width="56" height="56" rx="17" fill="#fff"/>
+    <path d="M20.5 43.5 V21.5 L32 34.5 L43.5 21.5 V43.5" stroke="#000" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </mask>
+  <rect x="4" y="4" width="56" height="56" rx="17" fill="currentColor" mask="url(#mqCutMono)"/>
+</svg>
