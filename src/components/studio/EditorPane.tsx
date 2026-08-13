@@ -55,10 +55,13 @@ function defineTheme(monaco: Monaco) {
 }
 
 /**
- * By default @monaco-editor/react pulls Monaco from a CDN. We bundle it instead
- * so the workbench keeps working with no network, which is the whole promise of
- * an offline-capable editor. Language workers are wired up by hand for the same
- * reason.
+ * By default @monaco-editor/react pulls Monaco from a CDN. We serve it from our
+ * own origin instead — `scripts/copy-monaco.mjs` drops the AMD build into
+ * public/monaco during prebuild — so the workbench keeps working with no
+ * network, which is the whole promise of an offline-capable editor.
+ *
+ * The AMD loader spawns its own language workers from that same directory, so
+ * nothing has to be threaded through the bundler.
  */
 function useLocalMonaco() {
   const [ready, setReady] = useState(false);
@@ -66,64 +69,11 @@ function useLocalMonaco() {
   useEffect(() => {
     let cancelled = false;
 
-    void (async () => {
-      const monaco = await import("monaco-editor");
-
-      (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
-        getWorker(_id: string, label: string) {
-          switch (label) {
-            case "json":
-              return new Worker(
-                new URL(
-                  "monaco-editor/esm/vs/language/json/json.worker.js",
-                  import.meta.url,
-                ),
-                { type: "module" },
-              );
-            case "css":
-            case "scss":
-            case "less":
-              return new Worker(
-                new URL(
-                  "monaco-editor/esm/vs/language/css/css.worker.js",
-                  import.meta.url,
-                ),
-                { type: "module" },
-              );
-            case "html":
-            case "handlebars":
-            case "razor":
-              return new Worker(
-                new URL(
-                  "monaco-editor/esm/vs/language/html/html.worker.js",
-                  import.meta.url,
-                ),
-                { type: "module" },
-              );
-            case "typescript":
-            case "javascript":
-              return new Worker(
-                new URL(
-                  "monaco-editor/esm/vs/language/typescript/ts.worker.js",
-                  import.meta.url,
-                ),
-                { type: "module" },
-              );
-            default:
-              return new Worker(
-                new URL(
-                  "monaco-editor/esm/vs/editor/editor.worker.js",
-                  import.meta.url,
-                ),
-                { type: "module" },
-              );
-          }
-        },
-      };
-
-      loader.config({ monaco });
-      if (!cancelled) setReady(true);
-    })();
+    loader.config({ paths: { vs: "/monaco/vs" } });
+    loader
+      .init()
+      .then(() => !cancelled && setReady(true))
+      .catch(() => !cancelled && setReady(true));
 
     return () => {
       cancelled = true;

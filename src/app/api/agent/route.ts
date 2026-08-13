@@ -20,7 +20,8 @@ House rules:
 - No emoji. No filler openers such as "Great question" or "Certainly".
 - Every patch you produce will be hashed and signed by the user, so state plainly what the patch changes.`;
 
-export const runtime = "edge";
+// Streaming works on the Node runtime and the edge runtime is on its way out.
+export const dynamic = "force-dynamic";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
