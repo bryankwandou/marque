@@ -34,7 +34,7 @@ const SLIDES: Slide[] = [
           anchored on Solana.
         </p>
         <p className="mt-8 font-mono text-[12px] text-faint">
-          marque.vercel.app · devnet
+          marque-ide.vercel.app · devnet
         </p>
       </div>
     ),

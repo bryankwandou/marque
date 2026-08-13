@@ -21,7 +21,7 @@ const instrument = Instrument_Serif({
   display: "swap",
 });
 
-const SITE = "https://marque.vercel.app";
+const SITE = "https://marque-ide.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
