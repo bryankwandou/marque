@@ -1,17 +1,41 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { SealDemo } from "./SealDemo";
 
-const FACTS = [
-  { value: "16,371", label: "extensions reachable" },
-  { value: "0", label: "keys leave the tab" },
-  { value: "~400ms", label: "to anchor a seal" },
-];
+// The registry grows every week, so the headline count is read from the same
+// route the workbench uses rather than typed in and left to rot. The seed value
+// is the size of the snapshot shipped with this build, which is the number that
+// holds even with no network.
+const SEED_COUNT = "2,000";
 
 export function Hero() {
   const reduce = useReducedMotion();
+  const [extensionCount, setExtensionCount] = useState(SEED_COUNT);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/extensions?size=1")
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled || typeof d.total !== "number" || d.total <= 0) return;
+        setExtensionCount(d.total.toLocaleString("en-US"));
+      })
+      .catch(() => {
+        // Keep the seed. An unreachable registry is not worth a broken headline.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const facts = [
+    { value: extensionCount, label: "extensions reachable" },
+    { value: "0", label: "keys leave the tab" },
+    { value: "~400ms", label: "to anchor a seal" },
+  ];
 
   const rise = (delay: number) =>
     reduce
@@ -84,7 +108,7 @@ export function Hero() {
             {...rise(0.24)}
             className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-t border-line pt-6"
           >
-            {FACTS.map((f) => (
+            {facts.map((f) => (
               <div key={f.label}>
                 <dt className="font-mono text-[19px] tabular-nums text-paper">
                   {f.value}

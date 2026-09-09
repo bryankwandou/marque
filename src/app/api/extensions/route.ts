@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
+import catalog from "@/data/catalog.json";
 
 /**
  * Proxy onto the Open VSX registry — the open-source marketplace that VSCodium,
  * Gitpod and Eclipse Theia consume. Going through our own route keeps the
  * browser free of CORS problems and lets us normalise the payload once.
  *
+ * When the registry cannot be reached, the route serves a pinned snapshot of the
+ * 2000 most-installed extensions instead of an empty list, so the marketplace
+ * still works offline. Refresh the snapshot with `node scripts/fetch-catalog.mjs`.
+ *
  * Open VSX API reference: https://open-vsx.org/swagger-ui/index.html
  */
 
-const REGISTRY = "https://open-vsx.org/api/-/search";
+// Overridable so a self-hosted Open VSX mirror can be pointed at instead, and so
+// the snapshot fallback can be exercised by aiming this at a dead host.
+const REGISTRY =
+  process.env.OPEN_VSX_SEARCH_URL ?? "https://open-vsx.org/api/-/search";
 
 export const revalidate = 300;
 
@@ -42,6 +50,35 @@ type OpenVsxHit = {
   files?: { icon?: string };
 };
 
+// Cast through `unknown` so the type checker treats the snapshot as a plain
+// array rather than inferring a 2000-member literal type from the JSON.
+const PINNED = catalog.extensions as unknown as Extension[];
+
+/**
+ * Search the pinned snapshot the same way the registry would: match on the
+ * display name, id and description, and keep the install-count ordering the
+ * snapshot was captured in.
+ */
+function fromSnapshot(query: string, size: number, offset: number) {
+  const needle = query.toLowerCase();
+  const hits = needle
+    ? PINNED.filter(
+        (e) =>
+          e.displayName.toLowerCase().includes(needle) ||
+          e.id.toLowerCase().includes(needle) ||
+          e.description.toLowerCase().includes(needle),
+      )
+    : PINNED;
+
+  return {
+    extensions: hits.slice(offset, offset + size),
+    total: hits.length,
+    offset,
+    source: "snapshot" as const,
+    capturedAt: catalog.capturedAt,
+  };
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q")?.trim() ?? "";
@@ -67,10 +104,10 @@ export async function GET(request: Request) {
     });
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `registry responded ${res.status}`, extensions: [], total: 0 },
-        { status: 502 },
-      );
+      return NextResponse.json({
+        ...fromSnapshot(query, size, offset),
+        notice: `registry responded ${res.status}; serving the pinned snapshot`,
+      });
     }
 
     const data = (await res.json()) as {
@@ -99,15 +136,15 @@ export async function GET(request: Request) {
       extensions,
       total: data.totalSize ?? extensions.length,
       offset: data.offset ?? offset,
+      source: "registry" as const,
     });
   } catch (err) {
-    return NextResponse.json(
-      {
-        error: err instanceof Error ? err.message : "registry unreachable",
-        extensions: [],
-        total: 0,
-      },
-      { status: 502 },
-    );
+    return NextResponse.json({
+      ...fromSnapshot(query, size, offset),
+      notice:
+        err instanceof Error
+          ? `${err.message}; serving the pinned snapshot`
+          : "registry unreachable; serving the pinned snapshot",
+    });
   }
 }

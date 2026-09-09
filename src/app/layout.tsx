@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     url: SITE,
     title: "Marque — a browser IDE that signs its own work",
     description:
-      "Every AI edit hashed, signed, and anchored on Solana. 16,000+ extensions from Open VSX. Runs entirely in the browser.",
+      "Every AI edit hashed, signed, and anchored on Solana. 17,000+ extensions from Open VSX, with 2,000 pinned for offline use. Runs entirely in the browser.",
     siteName: "Marque",
   },
   twitter: {

@@ -54,7 +54,7 @@ the ones someone remembered to.
 | --- | --- |
 | Editor | Monaco, custom `marque` theme, TypeScript/JSON/CSS diagnostics |
 | Terminal | xterm.js with a working shell over the virtual workspace |
-| Extensions | Live search across Open VSX — 16,000+ entries, no bundled list |
+| Extensions | Live search across all of Open VSX, with the top 2,000 pinned on disk so the marketplace still answers with no network |
 | Agent | Streaming, any OpenAI-compatible endpoint, patches applied per file |
 | Seals | ed25519 signing in-tab, memo anchoring on devnet, verify on read |
 | Persistence | Files and seals in localStorage; nothing is uploaded |
@@ -145,7 +145,7 @@ src/
     studio/page.tsx       the workbench
     deck/page.tsx         pitch deck
     api/
-      extensions/         Open VSX proxy, 5 min revalidate
+      extensions/         Open VSX proxy, 5 min revalidate, snapshot fallback
       agent/              streaming chat completions (edge)
       attest/             verify signature -> memo transaction
   components/

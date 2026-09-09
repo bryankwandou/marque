@@ -238,7 +238,7 @@ const SLIDES: Slide[] = [
       <Split
         title="What runs right now, and what does not"
         body={[
-          "Running: Monaco editor with a custom theme, a working shell over the virtual workspace, live search across 16,000+ Open VSX extensions, a streaming agent panel that applies patches per file, and end-to-end sealing against devnet with a transaction you can open in any explorer.",
+          "Running: Monaco editor with a custom theme, a working shell over the virtual workspace, live search across the whole Open VSX registry with the top 2,000 pinned so the marketplace still works offline, a streaming agent panel that applies patches per file, and end-to-end sealing against devnet with a transaction you can open in any explorer.",
           "Not running: desktop and mobile builds, language servers beyond what Monaco carries in-browser, extensions that need a Node host, and mainnet. Every on-chain claim in the product names the cluster.",
         ]}
         aside={

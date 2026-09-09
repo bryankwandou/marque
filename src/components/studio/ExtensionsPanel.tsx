@@ -30,6 +30,10 @@ export function ExtensionsPanel() {
   const [category, setCategory] = useState("");
   const [items, setItems] = useState<Extension[]>([]);
   const [total, setTotal] = useState(0);
+  // True when the route fell back to the pinned snapshot because open-vsx.org
+  // could not be reached. Worth saying out loud rather than quietly showing
+  // stale counts.
+  const [offline, setOffline] = useState(false);
   const [state, setState] = useState<"idle" | "loading" | "error">("loading");
   const [installed, setInstalled] = useState<string[]>([]);
 
@@ -64,6 +68,7 @@ export function ExtensionsPanel() {
         }
         setItems(d.extensions ?? []);
         setTotal(d.total ?? 0);
+        setOffline(d.source === "snapshot");
         setState("idle");
       })
       .catch(() => !cancelled && setState("error"));
@@ -88,8 +93,18 @@ export function ExtensionsPanel() {
   return (
     <div className="flex h-full flex-col">
       <PanelHeader title="Extensions">
-        <span className="font-mono text-[10px] text-faint tabular-nums">
-          {total ? total.toLocaleString("en-US") : "—"}
+        <span className="flex items-center gap-1.5">
+          {offline && (
+            <span
+              className="rounded-[3px] border border-line-strong px-1 py-px font-mono text-[9px] uppercase tracking-[0.08em] text-faint"
+              title="open-vsx.org is unreachable. Searching the snapshot bundled with this build."
+            >
+              offline
+            </span>
+          )}
+          <span className="font-mono text-[10px] text-faint tabular-nums">
+            {total ? total.toLocaleString("en-US") : "—"}
+          </span>
         </span>
       </PanelHeader>
 

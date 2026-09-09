@@ -23,7 +23,8 @@ happens.
 | --- | --- |
 | Monaco editor, custom theme, bundled locally for offline use | Working |
 | xterm.js terminal with a real shell over the virtual workspace | Working |
-| Open VSX live search across 16,371 extensions | Working |
+| Open VSX live search, whole registry | Working |
+| Pinned 2,000-extension snapshot as the offline fallback | Working |
 | Streaming agent panel, four models, per-file patch application | Working |
 | ed25519 seal: canonical patch → SHA-256 → sign → devnet memo | Working |
 | Third-party verifier at `/verify`, fully client-side | Working |
@@ -118,3 +119,24 @@ Most recent run, 9 September 2026, against the production build:
 
 Transaction:
 https://explorer.solana.com/tx/25jKYBSpEjgKY5jmxXoDqU79kNtvfFXjLUxdzRb9jTDy1N73gaZZSxkrJbXS8yf13YTx4rugGY4T4pfi6fscrrv7?cluster=devnet
+
+## Offline extensions
+
+The marketplace searches Open VSX live, so results are current. That assumes a
+network, which the rest of the workbench does not. To close the gap,
+`scripts/fetch-catalog.mjs` pins the 2000 most-installed extensions to
+`src/data/catalog.json` in twenty pages of one hundred, and `/api/extensions`
+serves that snapshot whenever the registry cannot be reached. Search still runs
+over it, results are still ranked by install count, and both the extensions panel
+and the landing page label the state rather than passing stale counts off as live.
+
+Exercise the fallback without unplugging anything:
+
+```
+OPEN_VSX_SEARCH_URL=https://registry.invalid.example/api/-/search npm run dev
+```
+
+The route then answers `"source": "snapshot"` and search keeps working, for
+example `?q=docker` returns eleven matches led by `ms-azuretools.vscode-docker`.
+
+Refresh the snapshot with `npm run catalog`.

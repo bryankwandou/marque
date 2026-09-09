@@ -13,6 +13,7 @@ import type { Extension } from "@/app/api/extensions/route";
 export function Registry() {
   const [items, setItems] = useState<Extension[]>([]);
   const [total, setTotal] = useState<number | null>(null);
+  const [offline, setOffline] = useState(false);
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function Registry() {
         }
         setItems(d.extensions ?? []);
         setTotal(d.total ?? null);
+        setOffline(d.source === "snapshot");
         setState("ok");
       })
       .catch(() => !cancelled && setState("error"));
@@ -42,10 +44,16 @@ export function Registry() {
           eyebrow="Extensions"
           title={
             total
-              ? `${total.toLocaleString("en-US")} extensions, none of them bundled`
+              ? offline
+                ? `${total.toLocaleString("en-US")} extensions, served without a network`
+                : `${total.toLocaleString("en-US")} extensions, queried live`
               : "The registry, queried live"
           }
-          lede="Marque reads Open VSX — the same open registry VSCodium, Gitpod and Theia use. Nothing is vendored into this repository and nothing is scraped from a proprietary marketplace, so the catalogue below is whatever the registry holds at the moment you loaded this page."
+          lede={
+            offline
+              ? "Open VSX is not answering right now, so this list comes from the snapshot of the 2,000 most-installed extensions that ships inside the build. Search still works, the counts are simply from the day the snapshot was taken."
+              : "Marque reads Open VSX — the same open registry VSCodium, Gitpod and Theia use. Nothing is scraped from a proprietary marketplace, so the catalogue below is whatever the registry holds at the moment you loaded this page. The top 2,000 also ship inside the build, which is what keeps extension search alive when the network is not."
+          }
         />
 
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -59,8 +67,8 @@ export function Registry() {
 
           {state === "error" && (
             <p className="col-span-full rounded-[10px] border border-line bg-surface p-5 text-sm text-muted">
-              The registry did not answer. The workbench falls back to a cached list
-              when this happens, so extension search keeps working offline.
+              Neither the registry nor the bundled snapshot could be read, which
+              usually means this page failed to reach its own API route.
             </p>
           )}
 
