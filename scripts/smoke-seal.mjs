@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
  * Usage: node scripts/smoke-seal.mjs [baseUrl]
  */
 
-const BASE = process.argv[2] ?? "https://marque-eight-ruddy.vercel.app";
+const BASE = process.argv[2] ?? "https://marque-ide.vercel.app";
 
 const file = "src/ledger/settle.ts";
 const before = `export async function settle(order: Order) {

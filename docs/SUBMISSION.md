@@ -87,8 +87,34 @@ npm run dev
 
 ## Links
 
-- Live: https://marque.vercel.app
-- Workbench: https://marque.vercel.app/studio
-- Verifier: https://marque.vercel.app/verify
-- Deck: https://marque.vercel.app/deck
+- Live: https://marque-ide.vercel.app
+- Workbench: https://marque-ide.vercel.app/studio
+- Verifier: https://marque-ide.vercel.app/verify
+- Deck: https://marque-ide.vercel.app/deck
 - Source: https://github.com/bryankwandou/marque
+
+## On-chain proof
+
+Run from a clean checkout against the deployed app:
+
+```
+node scripts/smoke-seal.mjs https://marque-ide.vercel.app
+```
+
+The script builds a canonical patch, hashes it, signs it with a throwaway
+ed25519 pair, posts it to `/api/attest`, then reads the transaction back off
+`api.devnet.solana.com` and asserts the memo carries the digest that was signed.
+It also sends a forged signature first and asserts the route answers 400 without
+touching the relayer key.
+
+Most recent run, 9 September 2026, against the production build:
+
+| Check | Result |
+| --- | --- |
+| Local signature verify | PASS |
+| Forged seal rejected (400) | PASS |
+| Anchored on devnet | slot 495599145 |
+| Memo carries the signed digest | PASS |
+
+Transaction:
+https://explorer.solana.com/tx/25jKYBSpEjgKY5jmxXoDqU79kNtvfFXjLUxdzRb9jTDy1N73gaZZSxkrJbXS8yf13YTx4rugGY4T4pfi6fscrrv7?cluster=devnet

@@ -6,7 +6,7 @@
 
 **A browser code workspace that keeps a verifiable record of what its agents wrote.**
 
-[Live](https://marque.vercel.app) · [Workbench](https://marque.vercel.app/studio) · [Deck](https://marque.vercel.app/deck)
+[Live](https://marque-ide.vercel.app) · [Workbench](https://marque-ide.vercel.app/studio) · [Deck](https://marque-ide.vercel.app/deck)
 
 </div>
 
