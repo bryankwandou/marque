@@ -56,18 +56,57 @@ the ones someone remembered to.
 | Terminal | xterm.js with a working shell over the virtual workspace |
 | Extensions | Live search across all of Open VSX, with the top 2,000 pinned on disk so the marketplace still answers with no network |
 | Agent | Streaming, any OpenAI-compatible endpoint, patches applied per file |
+| Local models | Ollama, LM Studio, llama.cpp and Jan, called straight from the tab. Weights stay on disk and reach the GPU or the full CPU |
+| History | Every version of every file appended to IndexedDB, restorable one click at a time. Autosave writes it; nothing is ever overwritten |
+| Connectors | GitHub read and commit, Vercel project listing, n8n webhook trigger — all direct from the browser, tokens never touch our server |
+| Screen | Capture a frame, record a clip, or hand a frame to a local vision model and ask what is on it |
 | Seals | ed25519 signing in-tab, memo anchoring on devnet, verify on read |
-| Persistence | Files and seals in localStorage; nothing is uploaded |
+| Persistence | Files and seals in localStorage, revisions in IndexedDB; nothing is uploaded |
+
+### Running a model on your own machine
+
+The agent panel points at whatever the Models panel selects. Pick a local runtime
+and the request never leaves the laptop:
+
+```bash
+# once
+curl -fsSL https://ollama.com/install.sh | sh      # or the Windows installer
+ollama pull qwen2.5-coder:7b                       # 4.7 GB
+
+# every time, so the browser is allowed to call it
+OLLAMA_ORIGINS=https://marque-ide.vercel.app ollama serve
+```
+
+The panel probes `http://localhost:11434/v1`, lists what is on disk, and hands you
+that `OLLAMA_ORIGINS` line pre-filled with the origin you are actually on. LM
+Studio (`:1234`), llama.cpp (`:8080`) and Jan (`:1337`) work the same way.
+
+A browser tab cannot reach an NPU — there is no web API for one — and cannot pin a
+CPU at 99%. The runtime does both, which is exactly why the weights live outside
+the tab rather than inside it.
 
 ### What does not
 
 - No desktop or mobile build.
+- No OS emulators. iOS, Android and Windows images cannot run in a tab.
+- No Blender, Photoshop or Adobe connectors. Those need a local bridge process,
+  which is not a browser feature and is not shipped here.
+- Replit has no public API for writing files, so there is no connector for it.
 - Language servers beyond what Monaco ships in-browser.
 - Extensions requiring a Node extension host are listed but do not execute.
 - Mainnet.
 
 Stating this plainly is deliberate. A project claiming parity with a decade-old
 editor after one build cycle is not credible.
+
+### On the numbers
+
+Open VSX held **17,595** extensions when this snapshot was taken, and the headline
+on the landing page reads that count from the registry rather than from a constant
+somebody typed once. There is no open registry anywhere with 295,000 entries; the
+VS Code Marketplace has roughly 75,000 and its terms forbid third-party clients.
+The command palette carries the workbench commands plus every action Monaco itself
+exposes — a few hundred, enumerated live from the editor instance, not padded.
 
 ---
 
@@ -150,10 +189,16 @@ src/
       attest/             verify signature -> memo transaction
   components/
     landing/              hero, mechanism, registry, comparison, faq
-    studio/               editor, terminal, agent, seals, extensions, palette
+    studio/               editor, terminal, agent, seals, extensions, palette,
+                          history, models, connectors, screen
   lib/
     seal.ts               keypair, canonical patch, sign, verify, anchor
     workspace.ts          virtual filesystem (zustand + persist)
+    history.ts            append-only revision log in IndexedDB
+    models.ts             local runtime discovery and streaming
+    connectors.ts         GitHub, Vercel and n8n, called from the browser
+    screen.ts             getDisplayMedia capture and recording
+    editor-bridge.ts      hands Monaco's own action list to the palette
 ```
 
 ## Security notes
@@ -166,6 +211,13 @@ src/
   client bundle.
 - `/api/attest` validates the digest shape and verifies the signature before any
   RPC call.
+- Connector tokens live in `localStorage` on the machine that typed them and are
+  sent only to the service they belong to. That is the same trust boundary as the
+  signing key, and it means anything able to run script on this origin can read
+  them: scope a GitHub token to the one repository you mean.
+- Screen capture goes through `getDisplayMedia`, so the browser's own picker
+  decides what the tab can see. Reading a frame with a model is restricted to a
+  local runtime, so a picture of a desktop is never posted to a hosted provider.
 
 ## Licences and attribution
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Editor, { loader, type Monaco, type OnMount } from "@monaco-editor/react";
 import { X } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace";
+import { bindEditor } from "@/lib/editor-bridge";
 import { cn } from "@/lib/utils";
 
 /** Marque's editor theme. Warm-black surfaces, brass for what the agent touched. */
@@ -97,6 +98,8 @@ export function EditorPane() {
 
   const onMount = useCallback<OnMount>((editor, monaco) => {
     editorRef.current = editor;
+    // Hand the instance to the palette so it can list Monaco's own actions.
+    bindEditor(editor);
     defineTheme(monaco);
     monaco.editor.setTheme("marque");
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
@@ -104,6 +107,8 @@ export function EditorPane() {
       noSyntaxValidation: false,
     });
   }, []);
+
+  useEffect(() => () => bindEditor(null), []);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">

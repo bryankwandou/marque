@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useWorkspace } from "@/lib/workspace";
+import { editorActions } from "@/lib/editor-bridge";
 import { cn } from "@/lib/utils";
 
 export type Command = {
@@ -26,6 +27,22 @@ export function CommandPalette({
   const [index, setIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Monaco is read once per open rather than on every keystroke: the action
+  // list is a few hundred entries and does not change while the palette is up.
+  const [actions, setActions] = useState<Command[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    setActions(
+      editorActions().map((a) => ({
+        id: `editor:${a.id}`,
+        label: a.label,
+        hint: "editor",
+        run: a.run,
+      })),
+    );
+  }, [open]);
+
   const all = useMemo<Command[]>(
     () => [
       ...commands,
@@ -35,16 +52,25 @@ export function CommandPalette({
         hint: "file",
         run: () => openFile(f.path),
       })),
+      ...actions,
     ],
-    [commands, files, openFile],
+    [commands, files, openFile, actions],
   );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return all.slice(0, 12);
-    return all
-      .filter((c) => c.label.toLowerCase().includes(q))
-      .slice(0, 12);
+    // With nothing typed, workbench commands and files are what you want —
+    // burying them under the editor action list would be useless.
+    if (!q) return all.filter((c) => c.hint !== "editor").slice(0, 14);
+
+    const hits = all.filter((c) => c.label.toLowerCase().includes(q));
+    // A label that starts with the query is almost always the intended one.
+    hits.sort((a, b) => {
+      const aStarts = a.label.toLowerCase().startsWith(q) ? 0 : 1;
+      const bStarts = b.label.toLowerCase().startsWith(q) ? 0 : 1;
+      return aStarts - bStarts || a.label.length - b.label.length;
+    });
+    return hits.slice(0, 40);
   }, [all, query]);
 
   useEffect(() => {
@@ -125,6 +151,9 @@ export function CommandPalette({
             </li>
           ))}
         </ul>
+        <p className="border-t border-line px-4 py-2 font-mono text-[10px] text-faint">
+          {all.length} commands · {actions.length} from the editor itself
+        </p>
       </div>
     </div>
   );

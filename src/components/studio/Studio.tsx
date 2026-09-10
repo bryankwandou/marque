@@ -12,15 +12,25 @@ import {
   PanelBottom,
   Loader2,
   Stamp,
+  History,
+  Cpu,
+  Plug,
+  MonitorPlay,
 } from "lucide-react";
 import { Mark } from "@/components/Logo";
 import { Explorer } from "./Explorer";
 import { AgentPanel } from "./AgentPanel";
 import { LedgerPanel } from "./LedgerPanel";
 import { ExtensionsPanel } from "./ExtensionsPanel";
+import { HistoryPanel } from "./HistoryPanel";
+import { ModelsPanel } from "./ModelsPanel";
+import { ConnectorsPanel } from "./ConnectorsPanel";
+import { ScreenPanel } from "./ScreenPanel";
 import { CommandPalette, type Command } from "./CommandPalette";
 import { useSeal } from "./useSeal";
+import { useAutosave } from "./useAutosave";
 import { useWorkspace } from "@/lib/workspace";
+import { stamp, revisions, record, clear as clearHistory } from "@/lib/history";
 import { cn } from "@/lib/utils";
 
 // Monaco and xterm are both large and both browser-only.
@@ -45,12 +55,21 @@ const VIEWS = [
   { key: "explorer", label: "Explorer", icon: Files, node: <Explorer /> },
   { key: "agent", label: "Agent", icon: Sparkles, node: <AgentPanel /> },
   { key: "seals", label: "Seals", icon: ShieldCheck, node: <LedgerPanel /> },
+  { key: "history", label: "History", icon: History, node: <HistoryPanel /> },
+  { key: "models", label: "Models", icon: Cpu, node: <ModelsPanel /> },
   {
     key: "extensions",
     label: "Extensions",
     icon: Blocks,
     node: <ExtensionsPanel />,
   },
+  {
+    key: "connectors",
+    label: "Connectors",
+    icon: Plug,
+    node: <ConnectorsPanel />,
+  },
+  { key: "screen", label: "Screen", icon: MonitorPlay, node: <ScreenPanel /> },
 ] as const;
 
 type ViewKey = (typeof VIEWS)[number]["key"];
@@ -65,8 +84,33 @@ export function Studio() {
   const activePath = useWorkspace((s) => s.activePath);
   const seals = useWorkspace((s) => s.seals);
   const { seal, pending, lastError, clearError } = useSeal();
+  const { savedAt, pending: saving } = useAutosave();
 
   const anchored = seals.filter((s) => s.status === "anchored").length;
+
+  const create = useWorkspace((s) => s.create);
+  const close = useWorkspace((s) => s.close);
+  const update = useWorkspace((s) => s.update);
+
+  /**
+   * Step back one saved version. The current text is row zero, so the one to
+   * restore is row one; putting it back is itself appended, which means this is
+   * reversible in the same panel rather than destructive.
+   */
+  const rollback = useCallback(async () => {
+    if (!activePath) return;
+    const rows = await revisions(activePath, 2);
+    const previous = rows[1];
+    if (!previous) {
+      setToast("No earlier version of this file yet");
+      setTimeout(() => setToast(null), 2600);
+      return;
+    }
+    update(activePath, previous.content);
+    await record(activePath, previous.content, "restore");
+    setToast(`Rolled back to ${stamp(previous.at)}`);
+    setTimeout(() => setToast(null), 2600);
+  }, [activePath, update]);
 
   const doSeal = useCallback(async () => {
     const result = await seal("manual");
@@ -111,8 +155,47 @@ export function Studio() {
         hint: "⌘B",
         run: () => setSidebar((v) => !v),
       },
+      {
+        id: "file:new",
+        label: "New file",
+        hint: "workspace",
+        run: () => {
+          const path = window.prompt("Path for the new file", "src/untitled.ts");
+          if (path?.trim()) create(path.trim());
+        },
+      },
+      {
+        id: "file:close",
+        label: "Close the active file",
+        hint: "workspace",
+        run: () => activePath && close(activePath),
+      },
+      {
+        id: "file:copy-path",
+        label: "Copy the path of the active file",
+        hint: "workspace",
+        run: () => {
+          if (activePath) void navigator.clipboard.writeText(activePath);
+        },
+      },
+      {
+        id: "history:undo-save",
+        label: "Roll back to the previous saved version",
+        hint: "history",
+        run: () => void rollback(),
+      },
+      {
+        id: "history:clear",
+        label: "Erase the revision log",
+        hint: "history",
+        run: () => {
+          if (window.confirm("Delete every saved version? This cannot be undone.")) {
+            void clearHistory().then(() => setToast("Revision log erased"));
+          }
+        },
+      },
     ],
-    [doSeal],
+    [doSeal, create, close, activePath, rollback],
   );
 
   useEffect(() => {
@@ -256,6 +339,12 @@ export function Studio() {
       <div className="flex h-6 shrink-0 items-center gap-4 border-t border-line bg-raised px-3 font-mono text-[11px] text-faint">
         <span className="text-brass">main</span>
         <span className="truncate">{activePath || "no file"}</span>
+        <span
+          className={cn(saving ? "text-brass" : "text-faint")}
+          title="Every version is appended to the local revision log"
+        >
+          {saving ? "saving" : savedAt ? `saved ${stamp(savedAt)}` : "autosave on"}
+        </span>
         <span className="ml-auto flex items-center gap-1.5 text-verdigris">
           <span className="size-1.5 rounded-full bg-verdigris" />
           devnet

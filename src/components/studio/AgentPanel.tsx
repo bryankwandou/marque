@@ -5,6 +5,9 @@ import { ArrowUp, Square, Check } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace";
 import { PanelHeader } from "./Explorer";
 import { cn } from "@/lib/utils";
+import { streamLocal } from "@/lib/models";
+import { AGENT_SYSTEM } from "@/lib/agent-prompt";
+import { useRuntime, runtimeFor, resolveBaseUrl } from "@/lib/runtime-store";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -37,6 +40,12 @@ export function AgentPanel() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [model, setModel] = useState(MODELS[0].id);
+
+  const runtimeId = useRuntime((s) => s.runtimeId);
+  const customBaseUrl = useRuntime((s) => s.customBaseUrl);
+  const localModel = useRuntime((s) => s.localModel);
+  const runtime = runtimeFor(runtimeId);
+  const isLocal = runtime.kind === "local";
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState<Set<string>>(new Set());
   const abort = useRef<AbortController | null>(null);
@@ -64,7 +73,44 @@ export function AgentPanel() {
     const controller = new AbortController();
     abort.current = controller;
 
+    const contextNote = active
+      ? `Open file in the editor:
+
+${`${active.path}
+
+${active.content}`.slice(0, 12000)}`
+      : null;
+
     try {
+      // A local runtime is called straight from the tab. That is the whole point
+      // of it: with the weights on disk and the model chosen here, no part of
+      // this request touches the network.
+      if (isLocal) {
+        if (!localModel) {
+          throw new Error(
+            "No local model selected. Open the Models panel and pick one.",
+          );
+        }
+        let acc = "";
+        await streamLocal({
+          baseUrl: resolveBaseUrl(runtimeId, customBaseUrl),
+          model: localModel,
+          signal: controller.signal,
+          messages: [
+            { role: "system", content: AGENT_SYSTEM },
+            ...(contextNote
+              ? [{ role: "system" as const, content: contextNote }]
+              : []),
+            ...next,
+          ],
+          onDelta: (delta) => {
+            acc += delta;
+            setMessages([...next, { role: "assistant", content: acc }]);
+          },
+        });
+        return;
+      }
+
       const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -113,18 +159,28 @@ export function AgentPanel() {
   return (
     <div className="flex h-full flex-col">
       <PanelHeader title="Agent">
-        <select
-          value={model}
-          onChange={(e) => setModel(e.target.value)}
-          className="rounded-[4px] border border-line bg-ink px-1.5 py-0.5 font-mono text-[10.5px] text-muted outline-none hover:border-line-strong"
-          aria-label="Model"
-        >
-          {MODELS.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+        {isLocal ? (
+          <span
+            title={`${runtime.label} at ${resolveBaseUrl(runtimeId, customBaseUrl)}`}
+            className="flex items-center gap-1.5 font-mono text-[10.5px] text-verdigris"
+          >
+            <span className="size-1.5 rounded-full bg-verdigris" />
+            {localModel || "no model"}
+          </span>
+        ) : (
+          <select
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            className="rounded-[4px] border border-line bg-ink px-1.5 py-0.5 font-mono text-[10.5px] text-muted outline-none hover:border-line-strong"
+            aria-label="Model"
+          >
+            {MODELS.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        )}
       </PanelHeader>
 
       <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
@@ -242,7 +298,9 @@ export function AgentPanel() {
           </button>
         </div>
         <p className="mt-1.5 font-mono text-[10px] text-faint">
-          Enter sends · Shift Enter for a newline
+          {isLocal
+            ? "Enter sends · running on this machine, nothing leaves it"
+            : "Enter sends · Shift Enter for a newline"}
         </p>
       </div>
     </div>
