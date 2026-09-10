@@ -16,6 +16,7 @@ import {
   Cpu,
   Plug,
   MonitorPlay,
+  Globe,
 } from "lucide-react";
 import { Mark } from "@/components/Logo";
 import { Explorer } from "./Explorer";
@@ -26,6 +27,7 @@ import { HistoryPanel } from "./HistoryPanel";
 import { ModelsPanel } from "./ModelsPanel";
 import { ConnectorsPanel } from "./ConnectorsPanel";
 import { ScreenPanel } from "./ScreenPanel";
+import { PreviewPane } from "./PreviewPane";
 import { CommandPalette, type Command } from "./CommandPalette";
 import { useSeal } from "./useSeal";
 import { useAutosave } from "./useAutosave";
@@ -78,6 +80,7 @@ export function Studio() {
   const [view, setView] = useState<ViewKey>("explorer");
   const [sidebar, setSidebar] = useState(true);
   const [panel, setPanel] = useState(true);
+  const [dock, setDock] = useState<"terminal" | "preview">("terminal");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -183,6 +186,24 @@ export function Studio() {
         label: "Roll back to the previous saved version",
         hint: "history",
         run: () => void rollback(),
+      },
+      {
+        id: "dock:preview",
+        label: "Open the preview browser",
+        hint: "panel",
+        run: () => {
+          setDock("preview");
+          setPanel(true);
+        },
+      },
+      {
+        id: "dock:terminal",
+        label: "Open the terminal",
+        hint: "panel",
+        run: () => {
+          setDock("terminal");
+          setPanel(true);
+        },
       },
       {
         id: "history:clear",
@@ -317,18 +338,44 @@ export function Studio() {
         <div className="flex min-w-0 flex-1 flex-col bg-surface">
           <EditorPane />
           {panel && (
-            <div className="h-[240px] shrink-0 border-t border-line bg-ink">
-              <div className="flex h-8 items-center gap-3 border-b border-line px-3">
-                <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.11em] text-brass">
-                  <TerminalSquare size={12} />
-                  Terminal
-                </span>
+            <div className="h-[280px] shrink-0 border-t border-line bg-ink">
+              <div className="flex h-8 items-center gap-1 border-b border-line px-2">
+                {(
+                  [
+                    { key: "terminal", label: "Terminal", icon: TerminalSquare },
+                    { key: "preview", label: "Preview", icon: Globe },
+                  ] as const
+                ).map((t) => {
+                  const Icon = t.icon;
+                  const on = dock === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setDock(t.key)}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-[4px] px-2 py-1 font-mono text-[10.5px] uppercase tracking-[0.11em] transition-colors duration-150",
+                        on ? "text-brass" : "text-faint hover:text-muted",
+                      )}
+                    >
+                      <Icon size={12} />
+                      {t.label}
+                    </button>
+                  );
+                })}
                 <span className="ml-auto font-mono text-[10px] text-faint">
                   Ctrl J to hide
                 </span>
               </div>
               <div className="h-[calc(100%-2rem)]">
-                <TerminalPane onSeal={() => void doSeal()} />
+                {/* Both stay mounted: unmounting xterm loses the scrollback, and
+                    remounting the frame reruns the page's scripts. */}
+                <div className={cn("h-full", dock === "terminal" ? "block" : "hidden")}>
+                  <TerminalPane onSeal={() => void doSeal()} />
+                </div>
+                <div className={cn("h-full", dock === "preview" ? "block" : "hidden")}>
+                  <PreviewPane />
+                </div>
               </div>
             </div>
           )}

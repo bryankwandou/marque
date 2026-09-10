@@ -60,6 +60,7 @@ the ones someone remembered to.
 | History | Every version of every file appended to IndexedDB, restorable one click at a time. Autosave writes it; nothing is ever overwritten |
 | Connectors | GitHub read and commit, Vercel project listing, n8n webhook trigger — all direct from the browser, tokens never touch our server |
 | Screen | Capture a frame, record a clip, or hand a frame to a local vision model and ask what is on it |
+| Preview | A sandboxed browser docked next to the terminal. Local CSS and JS are inlined from the workspace, console output and uncaught errors are piped back, and the frame renders at desktop, tablet or phone width |
 | Seals | ed25519 signing in-tab, memo anchoring on devnet, verify on read |
 | Persistence | Files and seals in localStorage, revisions in IndexedDB; nothing is uploaded |
 
@@ -92,6 +93,8 @@ the tab rather than inside it.
 - No Blender, Photoshop or Adobe connectors. Those need a local bridge process,
   which is not a browser feature and is not shipped here.
 - Replit has no public API for writing files, so there is no connector for it.
+- The preview browser renders pages from the workspace. It is not a general web
+  browser and deliberately cannot be pointed at an arbitrary URL.
 - Language servers beyond what Monaco ships in-browser.
 - Extensions requiring a Node extension host are listed but do not execute.
 - Mainnet.
@@ -132,6 +135,17 @@ npm run dev
 
 Fund the relayer at [faucet.solana.com](https://faucet.solana.com). Without it the
 workbench still runs; seals stay local and say so.
+
+### Checks you can run
+
+```bash
+npm run test:preview                          # preview builder, 12 assertions
+npm run smoke -- https://marque-ide.vercel.app # seal pipeline, end to end on devnet
+```
+
+The smoke test signs a patch, sends a *forged* signature first and asserts the
+route rejects it with 400 before the relayer key is touched, then anchors a real
+memo and reads it back off `api.devnet.solana.com` to confirm the digest matches.
 
 ---
 
@@ -198,6 +212,7 @@ src/
     models.ts             local runtime discovery and streaming
     connectors.ts         GitHub, Vercel and n8n, called from the browser
     screen.ts             getDisplayMedia capture and recording
+    preview.ts            assembles a workspace page into one sandboxed document
     editor-bridge.ts      hands Monaco's own action list to the palette
 ```
 
